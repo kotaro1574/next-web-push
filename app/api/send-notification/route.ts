@@ -3,8 +3,6 @@ import webpush from "web-push"
 
 import { NotificationPayload, PushSubscription } from "@/types/webpush"
 
-export const runtime = "edge"
-
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as {
