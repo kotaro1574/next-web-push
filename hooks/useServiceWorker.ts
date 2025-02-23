@@ -15,7 +15,10 @@ export function useServiceWorker() {
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", {
+          scope: "/",
+          updateViaCache: "none",
+        })
         .then((reg) => {
           console.log("Service Worker registered:", reg)
           return navigator.serviceWorker.ready // ← 登録完了を待つ
