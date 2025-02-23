@@ -12,15 +12,14 @@ export function useServiceWorker() {
   const [registration, setRegistration] =
     useState<ServiceWorkerRegistration | null>(null)
 
-  // Service Worker登録処理
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window
-    ) {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker
         .register("/sw.js")
+        .then((reg) => {
+          console.log("Service Worker registered:", reg)
+          return navigator.serviceWorker.ready // ← 登録完了を待つ
+        })
         .then((reg) => {
           setRegistration(reg)
           return reg.pushManager.getSubscription()
@@ -30,7 +29,6 @@ export function useServiceWorker() {
             setIsSubscribed(true)
             setSubscription(sub.toJSON() as unknown as PushSubscription)
           } else {
-            // ローカルストレージから保存された購読情報があるか確認
             const savedSubscription = localStorage.getItem("pushSubscription")
             if (savedSubscription) {
               try {
