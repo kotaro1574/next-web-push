@@ -69,6 +69,10 @@ export function useServiceWorker() {
   // プッシュ通知購読処理
   async function subscribeToPush(): Promise<PushSubscription> {
     try {
+      if (typeof Notification === "undefined") {
+        throw new Error("このブラウザは通知APIをサポートしていません。")
+      }
+
       // 通知許可を要求
       const permission = await Notification.requestPermission()
       if (permission !== "granted") {
