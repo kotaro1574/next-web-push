@@ -1,16 +1,184 @@
-import PushSubscriptionButton from "@/components/PushSubscriptionButton"
+"use client"
 
-export default function IndexPage() {
+import { useEffect, useState } from "react"
+
+import { Button } from "@/components/ui/button"
+
+import { sendNotification, subscribeUser, unsubscribeUser } from "./actions"
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+  return outputArray
+}
+
+function PushNotificationManager() {
+  const [isSupported, setIsSupported] = useState(false)
+  const [subscription, setSubscription] = useState<PushSubscription | null>(
+    null
+  )
+  const [message, setMessage] = useState("")
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      setIsSupported(true)
+      registerServiceWorker()
+    }
+  }, [])
+
+  async function registerServiceWorker() {
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+        updateViaCache: "none",
+      })
+      const sub = await registration.pushManager.getSubscription()
+      setSubscription(sub)
+    } catch (error) {
+      console.error("Service Worker登録エラー:", error)
+      if (error instanceof Error) {
+        setError(error.message)
+      }
+    }
+  }
+
+  async function subscribeToPush() {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+        ),
+      })
+      setSubscription(sub)
+      const serializedSub = JSON.parse(JSON.stringify(sub))
+      await subscribeUser(serializedSub)
+    } catch (error) {
+      console.error("プッシュ通知の購読エラー:", error)
+      if (error instanceof Error) {
+        setError(error.message)
+      }
+    }
+  }
+
+  async function unsubscribeFromPush() {
+    try {
+      await subscription?.unsubscribe()
+      setSubscription(null)
+      await unsubscribeUser()
+    } catch (error) {
+      console.error("プッシュ通知の解除エラー:", error)
+      if (error instanceof Error) {
+        setError(error.message)
+      }
+    }
+  }
+
+  async function sendTestNotification() {
+    try {
+      if (subscription) {
+        await sendNotification(message)
+        setMessage("")
+      }
+    } catch (error) {
+      console.error("プッシュ通知の送信エラー:", error)
+      if (error instanceof Error) {
+        setError(error.message)
+      }
+    }
+  }
+
+  if (!isSupported) {
+    return <p>このブラウザではプッシュ通知はサポートされていません。</p>
+  }
+
   return (
-    <section className="container grid items-center gap-6 pb-8 pt-6 md:py-10">
-      <h1 className="mb-6 text-2xl font-bold">Web Push通知テスト</h1>
-      <div className="rounded-lg bg-accent p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-semibold">プッシュ通知を試す</h2>
-        <p className="mb-6">
-          「通知を受け取る」ボタンをクリックして通知を許可してください。その後、テスト通知を送信できます。
+    <div>
+      <h3>プッシュ通知</h3>
+      {subscription ? (
+        <>
+          <p>プッシュ通知を購読しています。</p>
+          <div>
+            <input
+              type="text"
+              placeholder="通知メッセージを入力する"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+          </div>
+          <div className="mt-2">
+            <Button onClick={sendTestNotification}>送信テスト</Button>
+          </div>
+          <div className="mt-2">
+            <Button onClick={unsubscribeFromPush} variant={"destructive"}>
+              登録解除
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p>プッシュ通知に登録されていません。</p>
+          <Button onClick={subscribeToPush}>登録</Button>
+        </>
+      )}
+      {error && <p className="mt-2 text-red-500">{error}</p>}
+    </div>
+  )
+}
+
+function InstallPrompt() {
+  const [isIOS, setIsIOS] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+
+  useEffect(() => {
+    setIsIOS(
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+    )
+
+    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches)
+  }, [])
+
+  if (isStandalone) {
+    return null // Don't show install button if already installed
+  }
+
+  return (
+    <div>
+      <h3>Install App</h3>
+      <Button className="mt-2">ホーム画面に追加</Button>
+      {isIOS && (
+        <p>
+          iOSデバイスにこのアプリをインストールするには、共有ボタンをタップします。
+          <span role="img" aria-label="share icon">
+            {" "}
+            ⎋{" "}
+          </span>
+          ホーム画面に追加
+          <span role="img" aria-label="plus icon">
+            {" "}
+            ➕{" "}
+          </span>
+          .
         </p>
-        <PushSubscriptionButton />
-      </div>
-    </section>
+      )}
+    </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <div className="container grid items-center gap-6 pb-8 pt-6 md:py-10">
+      <PushNotificationManager />
+      <InstallPrompt />
+    </div>
   )
 }
