@@ -66,13 +66,17 @@ function PushNotificationManager() {
         throw new Error("このブラウザは通知APIをサポートしていません。")
       }
 
+      if (!registration) {
+        throw new Error("Service Workerが登録されていません")
+      }
+
       // 通知許可を要求
       const permission = await Notification.requestPermission()
       if (permission !== "granted") {
         throw new Error("通知の許可が得られませんでした")
       }
 
-      const registration = await navigator.serviceWorker.ready
+      // const registration = await navigator.serviceWorker.ready
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(
