@@ -36,12 +36,27 @@ function PushNotificationManager() {
 
   async function registerServiceWorker() {
     try {
+      if (typeof Notification === "undefined") {
+        throw new Error("このブラウザは通知APIをサポートしていません。")
+      }
+
+      // 通知許可を要求
+      const permission = await Notification.requestPermission()
+      if (permission !== "granted") {
+        throw new Error("通知の許可が得られませんでした")
+      }
+
       const registration = await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
         updateViaCache: "none",
       })
+
+      if (!registration) {
+        throw new Error("Service Workerが登録されていません")
+      }
+
       const sub = await registration.pushManager.getSubscription()
-      setSubscription(sub)
+      console.log("Subscription:", sub)
     } catch (error) {
       console.error("Service Worker登録エラー:", error)
       if (error instanceof Error) {
