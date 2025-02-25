@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 
+import { PushSubscription } from "@/types/webpush"
 import { Button } from "@/components/ui/button"
 
 import { sendNotification, subscribeUser, unsubscribeUser } from "./actions"
@@ -21,6 +22,8 @@ function urlBase64ToUint8Array(base64String: string) {
 
 function PushNotificationManager() {
   const [isSupported, setIsSupported] = useState(false)
+  const [registration, setRegistration] =
+    useState<ServiceWorkerRegistration | null>(null)
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   )
@@ -36,17 +39,20 @@ function PushNotificationManager() {
 
   async function registerServiceWorker() {
     try {
-      const registration = await navigator.serviceWorker.register("/sw.js", {
+      const reg = await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
         updateViaCache: "none",
       })
 
-      if (!registration) {
-        throw new Error("Service Workerが登録されていません")
+      setRegistration(reg)
+
+      const sub = await reg.pushManager.getSubscription()
+
+      if (!sub) {
+        throw new Error("プッシュ通知に登録されていません")
       }
 
-      const sub = await registration.pushManager.getSubscription()
-      console.log("Subscription:", sub)
+      setSubscription(sub?.toJSON() as unknown as PushSubscription)
     } catch (error) {
       console.error("Service Worker登録エラー:", error)
       if (error instanceof Error) {
@@ -74,7 +80,7 @@ function PushNotificationManager() {
           process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
         ),
       })
-      setSubscription(sub)
+      setSubscription(sub.toJSON() as unknown as PushSubscription)
       const serializedSub = JSON.parse(JSON.stringify(sub))
       await subscribeUser(serializedSub)
     } catch (error) {
@@ -87,7 +93,24 @@ function PushNotificationManager() {
 
   async function unsubscribeFromPush() {
     try {
-      await subscription?.unsubscribe()
+      if (!registration) {
+        throw new Error("Service Workerが登録されていません")
+      }
+
+      const currentSubscription =
+        await registration.pushManager.getSubscription()
+
+      if (!currentSubscription) {
+        throw new Error("プッシュ通知に登録されていません")
+      }
+
+      // プッシュサービスから購読解除
+      const success = await currentSubscription.unsubscribe()
+
+      if (!success) {
+        throw new Error("プッシュ通知の解除に失敗しました")
+      }
+
       setSubscription(null)
       await unsubscribeUser()
     } catch (error) {
