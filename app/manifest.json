@@ -15,9 +15,7 @@
       "type": "image/png"
     }
   ],
-  "orientation": "any",
   "display": "standalone",
-  "dir": "auto",
   "lang": "ja",
   "name": "next-web-push",
   "short_name": "next-wp",
