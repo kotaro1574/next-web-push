@@ -67,6 +67,8 @@ function PushNotificationManager() {
         throw new Error("通知の許可が得られませんでした")
       }
 
+      await registerServiceWorker()
+
       const registration = await navigator.serviceWorker.ready
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
