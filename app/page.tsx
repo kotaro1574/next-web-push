@@ -33,6 +33,7 @@ function PushNotificationManager() {
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       setIsSupported(true)
+      registerServiceWorker()
     }
   }, [])
 
@@ -167,7 +168,6 @@ function PushNotificationManager() {
           <Button onClick={subscribeToPush}>登録</Button>
         </>
       )}
-      <Button onClick={registerServiceWorker}>ServiceWorker登録</Button>
       {error && <p className="mt-2 text-red-500">{error}</p>}
     </div>
   )
