@@ -28,7 +28,7 @@ export async function unsubscribeUser() {
 
 export async function sendNotification(message: string) {
   if (!subscription) {
-    throw new Error("購読不可")
+    return { success: false, error: "購読不可" }
   }
 
   try {
