@@ -152,50 +152,10 @@ function PushNotificationManager() {
   )
 }
 
-function InstallPrompt() {
-  const [isIOS, setIsIOS] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
-
-  useEffect(() => {
-    setIsIOS(
-      /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
-    )
-
-    setIsStandalone(window.matchMedia("(display-mode: standalone)").matches)
-  }, [])
-
-  if (isStandalone) {
-    return null // Don't show install button if already installed
-  }
-
-  return (
-    <div>
-      <h3>Install App</h3>
-      <Button className="mt-2">ホーム画面に追加</Button>
-      {isIOS && (
-        <p>
-          iOSデバイスにこのアプリをインストールするには、共有ボタンをタップします。
-          <span role="img" aria-label="share icon">
-            {" "}
-            ⎋{" "}
-          </span>
-          ホーム画面に追加
-          <span role="img" aria-label="plus icon">
-            {" "}
-            ➕{" "}
-          </span>
-          .
-        </p>
-      )}
-    </div>
-  )
-}
-
 export default function Page() {
   return (
     <div className="container grid items-center gap-6 pb-8 pt-6 md:py-10">
       <PushNotificationManager />
-      <InstallPrompt />
     </div>
   )
 }
