@@ -14,6 +14,7 @@ let subscription: PushSubscription | null = null
 
 export async function subscribeUser(sub: PushSubscription) {
   subscription = sub
+  console.log("🚨", subscription)
   // In a production environment, you would want to store the subscription in a database
   // For example: await db.subscriptions.create({ data: sub })
   return { success: true }

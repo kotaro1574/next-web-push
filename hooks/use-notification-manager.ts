@@ -55,8 +55,7 @@ export function useNotificationManager() {
         throw new Error("通知の許可が得られませんでした")
       }
 
-      const registration = await registerServiceWorker()
-      if (!registration) return
+      const registration = await navigator.serviceWorker.ready
 
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
