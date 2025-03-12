@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from "react"
+// web-pushのPushSubscriptionをWebPushSubscriptionとしてインポート
+import { PushSubscription as WebPushSubscription } from "web-push"
 
 import { urlBase64ToUint8Array } from "@/lib/utils"
 import { sendNotification, subscribeUser, unsubscribeUser } from "@/app/actions"
 
 export function useNotificationManager() {
   const [isSupported, setIsSupported] = useState(false)
+  // ブラウザのPushSubscriptionを使用
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   )
@@ -65,7 +68,7 @@ export function useNotificationManager() {
       })
       setSubscription(sub)
       const serializedSub = JSON.parse(JSON.stringify(sub))
-      await subscribeUser(serializedSub)
+      await subscribeUser(serializedSub as unknown as WebPushSubscription)
     } catch (error) {
       handleError(error, "プッシュ通知の購読エラー")
     }

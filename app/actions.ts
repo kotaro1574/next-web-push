@@ -1,8 +1,6 @@
 "use server"
 
-import webpush from "web-push"
-
-import { PushSubscription } from "@/types/webpush"
+import webpush, { PushSubscription } from "web-push"
 
 webpush.setVapidDetails(
   "mailto:your-email@example.com",
