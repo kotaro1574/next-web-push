@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useState } from "react"
-// web-pushのPushSubscriptionをWebPushSubscriptionとしてインポート
-import { PushSubscription as WebPushSubscription } from "web-push"
 
 import { urlBase64ToUint8Array } from "@/lib/utils"
 import { sendNotification, subscribeUser, unsubscribeUser } from "@/app/actions"
@@ -68,7 +66,7 @@ export function useNotificationManager() {
       })
       setSubscription(sub)
       const serializedSub = JSON.parse(JSON.stringify(sub))
-      await subscribeUser(serializedSub as unknown as WebPushSubscription)
+      await subscribeUser(serializedSub)
     } catch (error) {
       handleError(error, "プッシュ通知の購読エラー")
     }
@@ -89,11 +87,18 @@ export function useNotificationManager() {
   // 通知の送信
   const sendTestNotification = async (message: string) => {
     try {
-      if (subscription) {
-        await sendNotification(message)
-        return true
+      if (!subscription) {
+        return false
       }
-      return false
+
+      // サーバーアクションを使用して通知を送信
+      const result = await sendNotification(message)
+
+      if (!result.success) {
+        throw new Error(result.error || "通知の送信に失敗しました")
+      }
+
+      return true
     } catch (error) {
       handleError(error, "プッシュ通知の送信エラー")
       return false
