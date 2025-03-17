@@ -1,55 +1,37 @@
 import { useCallback, useEffect, useState } from "react"
 
 import { urlBase64ToUint8Array } from "@/lib/utils"
-import { sendNotification, subscribeUser, unsubscribeUser } from "@/app/actions"
+import { sendNotification } from "@/app/actions"
 
 export function useNotificationManager() {
   const [isSupported, setIsSupported] = useState(false)
-  // ブラウザのPushSubscriptionを使用
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   )
   const [error, setError] = useState<string | null>(null)
 
-  // エラーハンドリングのヘルパー関数
-  const handleError = useCallback((error: unknown, context: string) => {
-    console.error(`${context}:`, error)
-    setError(
-      error instanceof Error
-        ? error.message
-        : `${context}でエラーが発生しました`
-    )
-  }, [])
-
   // Service Workerの登録
-  const registerServiceWorker = useCallback(async () => {
-    try {
-      const registration = await navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-        updateViaCache: "none",
-      })
+  useEffect(() => {
+    const checkSupport = async () => {
+      if ("serviceWorker" in navigator && "PushManager" in window) {
+        setIsSupported(true)
 
-      if (!registration) {
-        throw new Error("Service Workerが登録されていません")
+        const registration = await navigator.serviceWorker.register("/sw.js", {
+          scope: "/",
+          updateViaCache: "none",
+        })
+
+        const sub = await registration.pushManager.getSubscription()
+        setSubscription(sub)
       }
-
-      const sub = await registration.pushManager.getSubscription()
-      setSubscription(sub)
-      console.log("Subscription:", sub)
-      return registration
-    } catch (error) {
-      handleError(error, "Service Worker登録エラー")
-      return null
     }
-  }, [handleError])
+
+    checkSupport()
+  }, [])
 
   // 通知の購読
   const subscribeToPush = async () => {
     try {
-      if (typeof Notification === "undefined") {
-        throw new Error("このブラウザは通知APIをサポートしていません。")
-      }
-
       // 通知許可を要求
       const permission = await Notification.requestPermission()
       if (permission !== "granted") {
@@ -65,10 +47,10 @@ export function useNotificationManager() {
         ),
       })
       setSubscription(sub)
-      const serializedSub = JSON.parse(JSON.stringify(sub))
-      await subscribeUser(serializedSub)
     } catch (error) {
-      handleError(error, "プッシュ通知の購読エラー")
+      if (error instanceof Error) {
+        setError(error.message)
+      }
     }
   }
 
@@ -78,9 +60,10 @@ export function useNotificationManager() {
       if (!subscription) return
       await subscription.unsubscribe()
       setSubscription(null)
-      await unsubscribeUser()
     } catch (error) {
-      handleError(error, "プッシュ通知の解除エラー")
+      if (error instanceof Error) {
+        setError(error.message)
+      }
     }
   }
 
@@ -92,7 +75,7 @@ export function useNotificationManager() {
       }
 
       // サーバーアクションを使用して通知を送信
-      const result = await sendNotification(message)
+      const result = await sendNotification(message, subscription)
 
       if (!result.success) {
         throw new Error(result.error || "通知の送信に失敗しました")
@@ -100,22 +83,12 @@ export function useNotificationManager() {
 
       return true
     } catch (error) {
-      handleError(error, "プッシュ通知の送信エラー")
+      if (error instanceof Error) {
+        setError(error.message)
+      }
       return false
     }
   }
-
-  // 初期化
-  useEffect(() => {
-    const checkSupport = async () => {
-      if ("serviceWorker" in navigator && "PushManager" in window) {
-        setIsSupported(true)
-        await registerServiceWorker()
-      }
-    }
-
-    checkSupport()
-  }, [registerServiceWorker])
 
   return {
     isSupported,
