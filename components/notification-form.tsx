@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { FormEvent, useState } from "react"
 
 import { Button } from "./ui/button"
 
@@ -10,7 +10,7 @@ export function NotificationForm({
 }) {
   const [message, setMessage] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!message.trim()) return
 

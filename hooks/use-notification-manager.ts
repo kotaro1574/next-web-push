@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 
-import { urlBase64ToUint8Array } from "@/lib/utils"
 import { sendNotification } from "@/app/actions"
 
 export function useNotificationManager() {
@@ -10,24 +9,43 @@ export function useNotificationManager() {
   )
   const [error, setError] = useState<string | null>(null)
 
-  // Service Workerの登録
   useEffect(() => {
-    const checkSupport = async () => {
-      if ("serviceWorker" in navigator && "PushManager" in window) {
-        setIsSupported(true)
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      setIsSupported(true)
+      registerServiceWorker()
+    }
+  }, [])
 
-        const registration = await navigator.serviceWorker.register("/sw.js", {
-          scope: "/",
-          updateViaCache: "none",
-        })
-
-        const sub = await registration.pushManager.getSubscription()
-        setSubscription(sub)
+  // Service Workerの登録
+  const registerServiceWorker = async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+        updateViaCache: "none",
+      })
+      const sub = await registration.pushManager.getSubscription()
+      setSubscription(sub)
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message)
       }
     }
+  }
 
-    checkSupport()
-  }, [])
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
 
   // 通知の購読
   const subscribeToPush = async () => {
