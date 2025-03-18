@@ -52,10 +52,10 @@ export function useNotificationManager() {
   const subscribeToPush = async () => {
     try {
       // 通知許可を要求
-      // const permission = await Notification.requestPermission()
-      // if (permission !== "granted") {
-      //   throw new Error("通知の許可が得られませんでした")
-      // }
+      const permission = await Notification.requestPermission()
+      if (permission !== "granted") {
+        throw new Error("通知の許可が得られませんでした")
+      }
 
       const registration = await navigator.serviceWorker.ready
 
