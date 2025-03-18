@@ -32,6 +32,7 @@ export function useNotificationManager() {
     }
   }
 
+  // Base64文字列をバイナリデータに変換
   function urlBase64ToUint8Array(base64String: string) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
     const base64 = (base64String + padding)
@@ -86,16 +87,26 @@ export function useNotificationManager() {
   }
 
   // 通知の送信
-  const sendTestNotification = async (message: string) => {
+  const sendNotification = async (message: string) => {
     try {
       if (!subscription) {
         return false
       }
 
-      // サーバーアクションを使用して通知を送信
-      const result = await sendNotification(message, subscription)
+      const response = await fetch("/api/send-notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          subscription,
+        }),
+      })
 
-      if (!result.success) {
+      const result = await response.json()
+
+      if (!response.ok) {
         throw new Error(result.error || "通知の送信に失敗しました")
       }
 
@@ -114,6 +125,6 @@ export function useNotificationManager() {
     error,
     subscribeToPush,
     unsubscribeFromPush,
-    sendTestNotification,
+    sendNotification,
   }
 }
