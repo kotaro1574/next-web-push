@@ -1,55 +1,56 @@
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 
-import { urlBase64ToUint8Array } from "@/lib/utils"
-import { sendNotification, subscribeUser, unsubscribeUser } from "@/app/actions"
+import { sendNotification } from "@/app/actions"
 
 export function useNotificationManager() {
   const [isSupported, setIsSupported] = useState(false)
-  // ブラウザのPushSubscriptionを使用
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null
   )
   const [error, setError] = useState<string | null>(null)
 
-  // エラーハンドリングのヘルパー関数
-  const handleError = useCallback((error: unknown, context: string) => {
-    console.error(`${context}:`, error)
-    setError(
-      error instanceof Error
-        ? error.message
-        : `${context}でエラーが発生しました`
-    )
+  useEffect(() => {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      setIsSupported(true)
+      registerServiceWorker()
+    }
   }, [])
 
   // Service Workerの登録
-  const registerServiceWorker = useCallback(async () => {
+  const registerServiceWorker = async () => {
     try {
       const registration = await navigator.serviceWorker.register("/sw.js", {
         scope: "/",
         updateViaCache: "none",
       })
-
-      if (!registration) {
-        throw new Error("Service Workerが登録されていません")
-      }
-
       const sub = await registration.pushManager.getSubscription()
       setSubscription(sub)
-      console.log("Subscription:", sub)
-      return registration
     } catch (error) {
-      handleError(error, "Service Worker登録エラー")
-      return null
+      if (error instanceof Error) {
+        setError(error.message)
+      }
     }
-  }, [handleError])
+  }
+
+  // Base64文字列をバイナリデータに変換
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding)
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
 
   // 通知の購読
   const subscribeToPush = async () => {
     try {
-      if (typeof Notification === "undefined") {
-        throw new Error("このブラウザは通知APIをサポートしていません。")
-      }
-
       // 通知許可を要求
       const permission = await Notification.requestPermission()
       if (permission !== "granted") {
@@ -65,10 +66,10 @@ export function useNotificationManager() {
         ),
       })
       setSubscription(sub)
-      const serializedSub = JSON.parse(JSON.stringify(sub))
-      await subscribeUser(serializedSub)
     } catch (error) {
-      handleError(error, "プッシュ通知の購読エラー")
+      if (error instanceof Error) {
+        setError(error.message)
+      }
     }
   }
 
@@ -78,44 +79,45 @@ export function useNotificationManager() {
       if (!subscription) return
       await subscription.unsubscribe()
       setSubscription(null)
-      await unsubscribeUser()
     } catch (error) {
-      handleError(error, "プッシュ通知の解除エラー")
+      if (error instanceof Error) {
+        setError(error.message)
+      }
     }
   }
 
   // 通知の送信
-  const sendTestNotification = async (message: string) => {
+  const sendNotification = async (message: string) => {
     try {
       if (!subscription) {
         return false
       }
 
-      // サーバーアクションを使用して通知を送信
-      const result = await sendNotification(message)
+      const response = await fetch("/api/send-notification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          subscription,
+        }),
+      })
 
-      if (!result.success) {
+      const result = await response.json()
+
+      if (!response.ok) {
         throw new Error(result.error || "通知の送信に失敗しました")
       }
 
       return true
     } catch (error) {
-      handleError(error, "プッシュ通知の送信エラー")
+      if (error instanceof Error) {
+        setError(error.message)
+      }
       return false
     }
   }
-
-  // 初期化
-  useEffect(() => {
-    const checkSupport = async () => {
-      if ("serviceWorker" in navigator && "PushManager" in window) {
-        setIsSupported(true)
-        await registerServiceWorker()
-      }
-    }
-
-    checkSupport()
-  }, [registerServiceWorker])
 
   return {
     isSupported,
@@ -123,6 +125,6 @@ export function useNotificationManager() {
     error,
     subscribeToPush,
     unsubscribeFromPush,
-    sendTestNotification,
+    sendNotification,
   }
 }
