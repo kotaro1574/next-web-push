@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react"
 
-import { sendNotification } from "@/app/actions"
-
 export function useNotificationManager() {
   const [isSupported, setIsSupported] = useState(false)
   const [subscription, setSubscription] = useState<PushSubscription | null>(
